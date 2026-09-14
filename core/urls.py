@@ -14,9 +14,19 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # include() = "qolgan hamma manzilni music/urls.py hal qilsin"
+    path('', include('music.urls')),
 ]
+
+# Yuklangan rasmlarni (muqova, ijrochi fotosi) ko'rsatish.
+# DIQQAT: bu FAQAT ishlab chiqish paytida (DEBUG=True) ishlaydi.
+# Haqiqiy serverda rasmlarni nginx yoki shunga o'xshash dastur beradi.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
