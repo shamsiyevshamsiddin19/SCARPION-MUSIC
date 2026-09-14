@@ -5,8 +5,54 @@ importi tayyor.
 
 ## Ishga tushirish
 
+### Windows (eng oson yo'l)
+
+Loyiha papkasida `ishga-tushir.ps1` faylini o'ng tugma bilan bosib
+**"Run with PowerShell"** ni tanlang. Yoki VS Code terminalida:
+
+```powershell
+.\ishga-tushir.ps1
+```
+
+Skript hammasini o'zi qiladi: Python topadi, `venv` yaratadi,
+kutubxonalarni o'rnatadi, `.env` ni yasab `SECRET_KEY` generatsiya
+qiladi, bazani tayyorlaydi va serverni ishga tushirib brauzerni ochadi.
+
+Foydali variantlar:
+
+```powershell
+.\ishga-tushir.ps1 -Albom       # mashhur albomlarni ham yuklaydi
+.\ishga-tushir.ps1 -Admin       # admin foydalanuvchi yaratadi
+.\ishga-tushir.ps1 -Tarmoq      # telefondan ham ochish uchun
+.\ishga-tushir.ps1 -Port 8080   # boshqa port
+```
+
+**"Running scripts is disabled" xatosi chiqsa** — Windows sukut
+bo'yicha skriptlarni bloklaydi. Bir martalik ruxsat:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\ishga-tushir.ps1
+```
+
+Yoki butunlay yechish (PowerShell'ni administrator sifatida oching):
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+### VS Code
+
+Loyihani ochib **F5** bosing. Uchta tayyor sozlama bor:
+server, tarmoqqa ochiq server va albomlarni yuklash.
+
+Birinchi marta "Python: Select Interpreter" so'ralsa — `venv` ichidagi
+Python'ni tanlang.
+
+### Linux / Mac (qo'lda)
+
 ```bash
 cp .env.example .env          # keyin .env ni to'ldiring
+python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python manage.py migrate
 ./venv/bin/python manage.py createsuperuser
