@@ -1,9 +1,6 @@
-from django.contrib.auth.decorators import login_not_required
-from django.contrib.auth.views import LoginView
 from django.urls import path
 
 from . import views
-from .forms import KirishForm
 
 # app_name = shu app uchun "familiya".
 # Shundan keyin URL lar 'music:album_list' deb chaqiriladi.
@@ -25,18 +22,9 @@ urlpatterns = [
     # --- Akkaunt ---
     # LoginView Django'ning tayyor view'i — faqat shablon va formani
     # o'zimiznikiga almashtiramiz, qolgan mantiq o'zida.
-    # login_not_required = LoginRequiredMiddleware bu sahifani
-    # tekshirmasin. Busiz kirish sahifasining o'zi ham login so'rab,
-    # cheksiz aylanma hosil bo'lardi.
-    path(
-        'kirish/',
-        login_not_required(LoginView.as_view(
-            template_name='music/login.html',
-            authentication_form=KirishForm,
-            redirect_authenticated_user=True,
-        )),
-        name='login',
-    ),
+    # KirishView ning o'zida @login_not_required bor — busiz kirish
+    # sahifasi ham login so'rab, cheksiz aylanma hosil bo'lardi.
+    path('kirish/', views.KirishView.as_view(), name='login'),
     path('royxatdan-otish/', views.SignupView.as_view(), name='signup'),
     # Brauzerdan Firebase ID tokeni keladi, javob JSON bo'ladi
     path('google-kirish/', views.google_login, name='google_login'),

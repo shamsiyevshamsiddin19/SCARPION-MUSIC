@@ -4,12 +4,15 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_not_required
+from django.contrib.auth.views import LoginView
 from django.utils.decorators import method_decorator
 from django.db.models import Count, F, OuterRef, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views import View
+from django.shortcuts import resolve_url
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView,
@@ -19,7 +22,8 @@ from google.oauth2 import id_token
 
 logger = logging.getLogger(__name__)
 
-from .forms import ArtistForm, AlbumForm, RoyxatForm, SongForm
+from .forms import ArtistForm, AlbumForm, KirishForm, RoyxatForm, SongForm
+from .middleware import KEYINGI_MANZIL
 from .models import Album, Artist, Genre, Song
 from .services.importers import import_album
 from .services.providers import PROVIDER_ERRORS, get_client, provider_name
@@ -695,3 +699,33 @@ def google_login(request):
           backend='django.contrib.auth.backends.ModelBackend')
     messages.success(request, f'Xush kelibsiz, {foydalanuvchi.username}!')
     return JsonResponse({'ok': True, 'keyingi': str(reverse_lazy('music:album_list'))})
+
+
+@method_decorator(login_not_required, name='dispatch')
+class KirishView(LoginView):
+    """
+    Kirish sahifasi.
+
+    Django ning tayyor LoginView i, faqat bitta farq bilan: qayerga
+    qaytarishni manzildagi ?next= dan emas, SESSIYADAN oladi
+    (middleware.py o'sha yerga yozib qo'ygan).
+    """
+
+    template_name = 'music/login.html'
+    authentication_form = KirishForm
+    redirect_authenticated_user = True
+
+    def get_success_url(self):
+        manzil = self.request.session.pop(KEYINGI_MANZIL, None)
+
+        # Sessiyadagi qiymat o'zimiznikidan kelgan bo'lsa ham
+        # tekshiramiz. Bu "ochiq yo'naltirish" xavfidan himoya:
+        # begona saytga yuboradigan manzil hech qachon o'tmasin.
+        if manzil and url_has_allowed_host_and_scheme(
+            url=manzil,
+            allowed_hosts={self.request.get_host()},
+            require_https=self.request.is_secure(),
+        ):
+            return manzil
+
+        return resolve_url(settings.LOGIN_REDIRECT_URL)

@@ -65,6 +65,7 @@ alboms/
 | `forms.py` | 84 | `ArtistForm`, `AlbumForm`, `SongForm` — maydonlar, yorliqlar va tekshiruvlar |
 | `context_processors.py` | 33 | HAR bir sahifaga avtomatik qo'shiladigan ma'lumot: footer janrlari va profil oynasidagi raqamlar |
 | `auth_backends.py` | 45 | E-pochta bilan ham kirish imkonini beradi. Django sukut bo'yicha faqat `username` ni qabul qiladi |
+| `middleware.py` | 41 | Saytga kirish uchun login talab qiladi. Django nikidan farqi — "qayerga bormoqchi edingiz" ni manzilga (`?next=`) emas, sessiyaga yozadi |
 
 **Sayt yopiq:** `LoginRequiredMiddleware` butun saytga kirish uchun login
 talab qiladi. Istisnolar `@login_not_required` bilan belgilangan —

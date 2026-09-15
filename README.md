@@ -282,7 +282,23 @@ Buni Django ning tayyor `LoginRequiredMiddleware` i bajaradi
 | `/media/...` | `core/urls.py` | Rasmlar; static fayllar runserver tomonidan middleware dan oldin beriladi |
 
 Kirgandan keyin odam qaysi sahifaga bormoqchi bo'lgan bo'lsa,
-o'sha yerga qaytariladi (`?next=` orqali).
+o'sha yerga qaytariladi.
+
+### Nega manzilda `?next=` yo'q
+
+Django ning tayyor `LoginRequiredMiddleware` i manzilga qo'shimcha
+yozadi: `/kirish/?next=/ijrochi/`. Ishlaydi, lekin manzil chiroyli emas.
+
+`music/middleware.py` dagi `KirishTalabMiddleware` xuddi shu ma'lumotni
+manzilga emas, **sessiyaga** yozadi. Natijada manzil toza `/kirish/`
+bo'ladi, xatti-harakat esa o'zgarmaydi.
+
+`KirishView.get_success_url()` uni sessiyadan o'qiydi. Manzilda
+qo'lda `?next=...` yozilsa — e'tiborga olinmaydi, ya'ni begona saytga
+yo'naltirish ("open redirect") imkoni yo'q.
+
+Faqat **GET** so'rovlar eslab qolinadi: POST ni kirgandan keyin qayta
+yuborib bo'lmaydi, shuning uchun bunday holda bosh sahifaga tushiladi.
 
 ## Profil oynasi
 

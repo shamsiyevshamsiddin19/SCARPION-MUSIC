@@ -64,7 +64,10 @@ MIDDLEWARE = [
     # AuthenticationMiddleware dan KEYIN turishi shart — u request.user
     # ni to'ldiradi, bu esa o'shani tekshiradi.
     # Istisnolar @login_not_required bilan belgilanadi (urls.py, views.py).
-    'django.contrib.auth.middleware.LoginRequiredMiddleware',
+    #
+    # Django niki emas, o'zimizniki: farqi shundaki, "qayerga bormoqchi
+    # edingiz" ma'lumotini manzilga (?next=...) emas, sessiyaga yozadi.
+    'music.middleware.KirishTalabMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
