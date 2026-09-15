@@ -554,7 +554,6 @@ def logout_view(request):
     """
     if request.method == 'POST':
         logout(request)
-        messages.success(request, 'Tizimdan chiqdingiz.')
     return redirect('music:album_list')
 
 
@@ -582,7 +581,6 @@ class SignupView(CreateView):
         # qaysi biri bilan kirganini o'zi tanlay olmaydi.
         login(self.request, self.object,
               backend='django.contrib.auth.backends.ModelBackend')
-        messages.success(self.request, f'Xush kelibsiz, {self.object.username}!')
         return javob
 
 
@@ -697,7 +695,6 @@ def google_login(request):
 
     login(request, foydalanuvchi,
           backend='django.contrib.auth.backends.ModelBackend')
-    messages.success(request, f'Xush kelibsiz, {foydalanuvchi.username}!')
     return JsonResponse({'ok': True, 'keyingi': str(reverse_lazy('music:album_list'))})
 
 
