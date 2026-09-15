@@ -195,6 +195,10 @@ class AlbumDetailView(DetailView):
         # Albomning umumiy davomiyligi (millisekundlarni qo'shamiz)
         jami_ms = sum(s.duration_ms or 0 for s in context['songs'])
         context['total_minutes'] = jami_ms // 60000
+
+        # Shablon shu bayroqqa qarab tahrirlash tugmalarini
+        # ko'rsatadi yoki yashiradi
+        context['ozgartira_oladi'] = ozgartira_oladimi(self.request.user, album)
         return context
 
 
@@ -245,6 +249,9 @@ class ArtistDetailView(DetailView):
             .annotate(songs_total=Count('songs'))
             .order_by(F('release_date').desc(nulls_last=True), 'title')
         )
+        context['ozgartira_oladi'] = ozgartira_oladimi(
+            self.request.user, self.object
+        )
         return context
 
 
@@ -260,6 +267,8 @@ class ArtistCreateView(CreateView):
 
     # form_valid = forma tekshiruvdan o'tgach ishlaydi
     def form_valid(self, form):
+        # Kim qo'shsa — o'sha ega bo'ladi
+        form.instance.owner = self.request.user
         messages.success(self.request, 'Ijrochi qo\'shildi.')
         return super().form_valid(form)
 
@@ -270,6 +279,7 @@ class AlbumCreateView(CreateView):
     template_name = 'music/album_form.html'
 
     def form_valid(self, form):
+        form.instance.owner = self.request.user
         messages.success(self.request, 'Albom qo\'shildi.')
         return super().form_valid(form)
 
@@ -285,6 +295,17 @@ class SongCreateView(CreateView):
     # Albomni shu yerda bir marta topib olamiz.
     def dispatch(self, request, *args, **kwargs):
         self.album = get_object_or_404(Album, pk=kwargs['album_pk'])
+
+        # Begona albomga qo'shiq qo'shib bo'lmaydi
+        if not ozgartira_oladimi(request.user, self.album):
+            ega = self.album.owner
+            messages.error(
+                request,
+                f"Bu albom sizniki emas — unga qo'shiq qo'sha olmaysiz. "
+                f"Egasi: {ega.username if ega else 'administrator'}."
+            )
+            return redirect(self.album.get_absolute_url())
+
         return super().dispatch(request, *args, **kwargs)
 
     # Formaga albomni uzatamiz (forms.py dagi __init__ uni kutyapti)
@@ -346,7 +367,8 @@ class ImportView(View):
             return redirect('music:import')
 
         try:
-            album, created = import_album(external_id)
+            # Kim import qilsa — o'sha ega bo'ladi
+            album, created = import_album(external_id, owner=request.user)
         except PROVIDER_ERRORS as exc:
             messages.error(request, str(exc))
             return redirect('music:import')
@@ -362,6 +384,75 @@ class ImportView(View):
         return redirect(album.get_absolute_url())
 
 # ==========================================================
+#  EGALIK — kim nimani o'zgartira oladi
+# ==========================================================
+
+def egasi_kim(obyekt):
+    """
+    Obyektning egasini qaytaradi.
+
+    Albom va Ijrochida "owner" maydoni bor. Qo'shiqda yo'q —
+    uning egasi o'zi turgan albomning egasi hisoblanadi.
+    """
+    ega = getattr(obyekt, 'owner', None)
+    if ega is None and hasattr(obyekt, 'album_id'):
+        return obyekt.album.owner
+    return ega
+
+
+def ozgartira_oladimi(user, obyekt):
+    """
+    Shu foydalanuvchi obyektni tahrirlashi/o'chirishi mumkinmi?
+
+    Qoidalar:
+      - Administrator (superuser) — hamma narsani
+      - Egasi — o'zinikini
+      - Qolganlar — yo'q
+      - Egasiz yozuvni faqat administrator o'zgartira oladi
+    """
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    ega = egasi_kim(obyekt)
+    return ega is not None and ega == user
+
+
+class EgalikTalabi:
+    """
+    Tahrirlash/o'chirish view lariga qo'shiladigan tekshiruv.
+
+    dispatch() ichida ishlaydi — ya'ni sahifa umuman chizilmasdan
+    OLDIN. Busiz begona odam forma sahifasini ko'rib, keyingina
+    to'xtatilardi.
+
+    403 sahifa o'rniga xabar bilan qaytaramiz: foydalanuvchi uchun
+    tushunarliroq va sayt ichida qoladi.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        # setup() dispatch dan oldin ishlagani uchun self.kwargs tayyor
+        obyekt = self.get_object()
+
+        if not ozgartira_oladimi(request.user, obyekt):
+            ega = egasi_kim(obyekt)
+            messages.error(
+                request,
+                f"Bu yozuv sizniki emas — uni faqat "
+                f"{ega.username if ega else 'administrator'} o'zgartira oladi."
+            )
+            return redirect(self.rad_etilganda(obyekt))
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def rad_etilganda(self, obyekt):
+        """Ruxsat bo'lmaganda qaysi sahifaga qaytaramiz."""
+        if hasattr(obyekt, 'get_absolute_url'):
+            return obyekt.get_absolute_url()
+        return obyekt.album.get_absolute_url()   # Qo'shiq uchun
+
+
+# ==========================================================
 #  TAHRIRLASH VA O'CHIRISH (CRUD ning U va D qismlari)
 # ==========================================================
 # UpdateView CreateView bilan deyarli bir xil ishlaydi: o'sha forma,
@@ -373,7 +464,7 @@ class ImportView(View):
 # roboti havolani ochib, yozuvni o'chirib yuborishi mumkin edi.
 
 
-class AlbumUpdateView(UpdateView):
+class AlbumUpdateView(EgalikTalabi, UpdateView):
     model = Album
     form_class = AlbumForm
     template_name = 'music/album_form.html'
@@ -383,7 +474,7 @@ class AlbumUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-class AlbumDeleteView(DeleteView):
+class AlbumDeleteView(EgalikTalabi, DeleteView):
     model = Album
     template_name = 'music/confirm_delete.html'
     # O'chirilgandan keyin qaytadigan manzil.
@@ -406,7 +497,7 @@ class AlbumDeleteView(DeleteView):
         return super().form_valid(form)
 
 
-class ArtistUpdateView(UpdateView):
+class ArtistUpdateView(EgalikTalabi, UpdateView):
     model = Artist
     form_class = ArtistForm
     template_name = 'music/artist_form.html'
@@ -416,7 +507,7 @@ class ArtistUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-class ArtistDeleteView(DeleteView):
+class ArtistDeleteView(EgalikTalabi, DeleteView):
     model = Artist
     template_name = 'music/confirm_delete.html'
     success_url = reverse_lazy('music:artist_list')
@@ -440,7 +531,7 @@ class ArtistDeleteView(DeleteView):
         return super().form_valid(form)
 
 
-class SongUpdateView(UpdateView):
+class SongUpdateView(EgalikTalabi, UpdateView):
     model = Song
     form_class = SongForm
     template_name = 'music/song_form.html'
@@ -464,7 +555,7 @@ class SongUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-class SongDeleteView(DeleteView):
+class SongDeleteView(EgalikTalabi, DeleteView):
     model = Song
     template_name = 'music/confirm_delete.html'
 

@@ -47,6 +47,8 @@ alboms/
 | `migrations/0001_initial.py` | 88 | Dastlabki 4 ta jadval |
 | `migrations/0002_...spotify_id...` | 72 | `spotify_id` → `source` + `external_id`, `Song.preview_url` qo'shildi |
 | `migrations/0003_artist_banner_cutout.py` | 23 | `Artist.cutout` va `Artist.banner` qo'shildi |
+| `migrations/0004_album_owner_artist_owner.py` | — | `owner` maydoni (kim qo'shgan) |
+| `migrations/0005_egasiz_yozuvlarni_adminga_berish.py` | 56 | Mavjud yozuvlarni administratorga biriktiradi |
 
 **`models.py` ichidagi muhim qismlar:**
 
