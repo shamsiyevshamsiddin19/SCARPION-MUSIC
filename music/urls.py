@@ -1,3 +1,4 @@
+from django.contrib.auth.decorators import login_not_required
 from django.contrib.auth.views import LoginView
 from django.urls import path
 
@@ -24,13 +25,16 @@ urlpatterns = [
     # --- Akkaunt ---
     # LoginView Django'ning tayyor view'i — faqat shablon va formani
     # o'zimiznikiga almashtiramiz, qolgan mantiq o'zida.
+    # login_not_required = LoginRequiredMiddleware bu sahifani
+    # tekshirmasin. Busiz kirish sahifasining o'zi ham login so'rab,
+    # cheksiz aylanma hosil bo'lardi.
     path(
         'kirish/',
-        LoginView.as_view(
+        login_not_required(LoginView.as_view(
             template_name='music/login.html',
             authentication_form=KirishForm,
             redirect_authenticated_user=True,
-        ),
+        )),
         name='login',
     ),
     path('royxatdan-otish/', views.SignupView.as_view(), name='signup'),

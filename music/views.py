@@ -3,6 +3,8 @@ import logging
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_not_required
+from django.utils.decorators import method_decorator
 from django.db.models import Count, F, OuterRef, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -534,6 +536,7 @@ def suggest(request):
     })
 
 
+@login_not_required
 def logout_view(request):
     """
     Tizimdan chiqish.
@@ -551,6 +554,8 @@ def logout_view(request):
     return redirect('music:album_list')
 
 
+# Ro'yxatdan o'tish sahifasi kirmagan odam uchun — tabiiyki ochiq
+@method_decorator(login_not_required, name='dispatch')
 class SignupView(CreateView):
     """
     Ro'yxatdan o'tish. Muvaffaqiyatli bo'lsa foydalanuvchini
@@ -639,6 +644,7 @@ def _google_foydalanuvchi(malumot):
     return yangi
 
 
+@login_not_required
 def google_login(request):
     """Brauzerdan kelgan Firebase ID tokenini tekshirib, tizimga kiritadi."""
     if request.method != 'POST':

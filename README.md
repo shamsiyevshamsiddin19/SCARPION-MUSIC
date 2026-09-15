@@ -264,6 +264,26 @@ Deezer'dagi "123" boshqa-boshqa narsa. `external_id` bo'sh bo'lsa cheklov
 ishlamaydi, shuning uchun qo'lda kiritilgan yozuvlarni istagancha qo'shish
 mumkin.
 
+## Kirish talab qilinadi
+
+Sayt **yopiq**: tizimga kirmagan odam faqat kirish va ro'yxatdan o'tish
+sahifalarini ko'radi, qolgan hamma manzil `/kirish/` ga yo'naltiriladi.
+
+Buni Django ning tayyor `LoginRequiredMiddleware` i bajaradi
+(`settings.py` dagi MIDDLEWARE ro'yxatida). Istisnolar
+`@login_not_required` bilan belgilangan:
+
+| Nima | Qayerda | Nega ochiq |
+|---|---|---|
+| `/kirish/` | `music/urls.py` | Aks holda cheksiz aylanma bo'lardi |
+| `/royxatdan-otish/` | `SignupView` | Yangi odam hali kirmagan |
+| `/google-kirish/` | `google_login()` | Kirish jarayonining bir qismi |
+| `/chiqish/` | `logout_view()` | Chiqayotgan odam uchun |
+| `/media/...` | `core/urls.py` | Rasmlar; static fayllar runserver tomonidan middleware dan oldin beriladi |
+
+Kirgandan keyin odam qaysi sahifaga bormoqchi bo'lgan bo'lsa,
+o'sha yerga qaytariladi (`?next=` orqali).
+
 ## Profil oynasi
 
 Tepa o'ngdagi avatar bosilganda akkaunt paneli ochiladi: foydalanuvchi

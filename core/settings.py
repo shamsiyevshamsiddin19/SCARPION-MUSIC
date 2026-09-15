@@ -60,6 +60,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Butun saytga kirish uchun login TALAB qiladi.
+    # AuthenticationMiddleware dan KEYIN turishi shart — u request.user
+    # ni to'ldiradi, bu esa o'shani tekshiradi.
+    # Istisnolar @login_not_required bilan belgilanadi (urls.py, views.py).
+    'django.contrib.auth.middleware.LoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

@@ -65,6 +65,10 @@ alboms/
 | `forms.py` | 84 | `ArtistForm`, `AlbumForm`, `SongForm` — maydonlar, yorliqlar va tekshiruvlar |
 | `context_processors.py` | 33 | HAR bir sahifaga avtomatik qo'shiladigan ma'lumot: footer janrlari va profil oynasidagi raqamlar |
 | `auth_backends.py` | 45 | E-pochta bilan ham kirish imkonini beradi. Django sukut bo'yicha faqat `username` ni qabul qiladi |
+
+**Sayt yopiq:** `LoginRequiredMiddleware` butun saytga kirish uchun login
+talab qiladi. Istisnolar `@login_not_required` bilan belgilangan —
+kirish, ro'yxatdan o'tish, Google kirish, chiqish va `/media/`.
 | `admin.py` | 82 | Django admin paneli sozlamalari (`SongInline` — albom ichida qo'shiqlar) |
 | `apps.py` | 5 | Ilova nomi |
 | `tests.py` | 3 | Bo'sh — testlar hali yozilmagan |
