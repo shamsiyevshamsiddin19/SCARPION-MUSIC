@@ -195,6 +195,22 @@ class RoyxatForm(UserCreationForm):
         })
         self.fields['password2'].help_text = ''
 
+    def clean_username(self):
+        """
+        Bazadagi username unique=True cheklovi katta-kichik harfni
+        FARQ QILADI ("Alice" va "alice" ikkalasi ham ro'yxatdan
+        o'ta oladi). Lekin kirish sahifasidagi EmailOrUsernameBackend
+        qidiruvi katta-kichik harfsiz (iexact) ishlaydi — shunday ikki
+        akkaunt paydo bo'lsa, backend .first() bilan ULARDAN BIRINI
+        tanlaydi va ikkinchisining egasi hech qachon (to'g'ri parol
+        bilan ham) kira olmay qoladi. Shuning uchun bu yerda ham
+        email kabi katta-kichik harfsiz tekshiramiz.
+        """
+        username = self.cleaned_data['username']
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError('Bu foydalanuvchi nomi band. Boshqasini tanlang.')
+        return username
+
     def clean_email(self):
         """
         Bir pochta bilan ikki marta ro'yxatdan o'tishni to'xtatamiz.

@@ -17,7 +17,7 @@ from datetime import date
 
 import requests
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils.text import slugify
 
 from ..models import Album, Artist, Genre, Song, Source
@@ -36,6 +36,18 @@ NASHR_SOZLARI = (
 
 # Oxiridagi ( ... ) yoki [ ... ] bo'lagini ushlaydi
 NASHR_NAQSHI = re.compile(r'\s*[\(\[][^\(\)\[\]]*[\)\]]\s*$')
+
+# NASHR_SOZLARI ni SO'Z CHEGARASI bilan qidiradigan naqsh.
+# DIQQAT: oddiy "soz in ich" satr ichida qidirish "edition"ni
+# "expedition"dan yoki "version"ni "conversion"/"diversion"dan farq
+# qila olmas edi — natijada "Arctic Expedition" kabi qavs ichidagi
+# haqiqiy nom "nashr qo'shimchasi" deb noto'g'ri kesib tashlanardi.
+# Faqat BOSHIDA \b qo'yilgan (oxirida emas): "remaster" so'zi
+# "remastered" ichida davom etaveradi va baribir ushlanishi kerak,
+# lekin "p" dan keyin "edition" kabi so'z O'RTASIDA boshlanmasligi kerak.
+NASHR_SOZLARI_NAQSHI = re.compile(
+    r'\b(?:' + '|'.join(re.escape(soz) for soz in NASHR_SOZLARI) + r')'
+)
 
 
 def clean_album_title(title):
@@ -65,7 +77,7 @@ def clean_album_title(title):
         if not m:
             break
         ich = m.group(0).lower()
-        if not any(soz in ich for soz in NASHR_SOZLARI):
+        if not NASHR_SOZLARI_NAQSHI.search(ich):
             break
         qisqargan = natija[:m.start()].strip()
         if not qisqargan:          # hammasi qavs ichida edi — tegmaymiz
@@ -182,7 +194,25 @@ def get_or_create_artist(name, external_id=None, source=Source.MANUAL,
                     artist.photo = image
             except Exception:
                 pass  # rasm bo'lmasa ham ijrochi yaratilaveradi
-        artist.save()
+
+        try:
+            # import_album dagi bilan bir xil sabab: ikkita so'rov bir
+            # xil ijrochini bir vaqtda yaratmoqchi bo'lsa (ikki albomni
+            # ketma-ket import qilish, ikkalasida ham shu ijrochi bor),
+            # savepoint bo'lmasa IntegrityError butun tashqi
+            # tranzaksiyani (import_album) buzib qo'yardi.
+            with transaction.atomic():
+                artist.save()
+        except IntegrityError:
+            qayta = None
+            if external_id:
+                qayta = Artist.objects.filter(
+                    source=source, external_id=external_id
+                ).first()
+            artist = qayta or Artist.objects.filter(name__iexact=name).first()
+            if artist is None:
+                raise
+            return artist
 
         # Endi chiroyliroq rasmlarni qidiramiz (cutout / banner).
         # Xato bo'lsa e'tibor bermaymiz — ijrochi allaqachon saqlangan,
@@ -253,7 +283,25 @@ def import_album(external_id, client=None, owner=None):
     if cover:
         album.cover = cover
 
-    album.save()   # slug shu yerda avtomatik yasaladi (models.py dagi save())
+    try:
+        # Ichki savepoint: ikkita so'rov (masalan, "Import qilish"
+        # tugmasi ikki marta bosilsa) AYNI shu albomni bir vaqtda
+        # import qilishga urinsa, yuqoridagi "Allaqachon bormi?"
+        # tekshiruvi ikkalasida ham "yo'q" deb chiqishi mumkin —
+        # keyin ikkinchisi (source, external_id) unikal cheklovini
+        # buzib IntegrityError beradi. Savepoint bo'lmasa bu xato
+        # BUTUN tashqi @transaction.atomic'ni "buzilgan" deb
+        # belgilab, undan keyingi har qanday so'rovni ham
+        # bekor qilib qo'yar edi.
+        with transaction.atomic():
+            album.save()   # slug shu yerda avtomatik yasaladi (models.py dagi save())
+    except IntegrityError:
+        yetib_kelgan = Album.objects.filter(
+            source=source, external_id=data['external_id']
+        ).first()
+        if yetib_kelgan:
+            return yetib_kelgan, False
+        raise
 
     for genre_name in data.get('genres', []):
         genre, _ = Genre.objects.get_or_create(

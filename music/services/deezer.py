@@ -127,6 +127,14 @@ class DeezerClient:
     # ------------------------------------------------------------------
     @staticmethod
     def _simplify_album(item):
+        # DIQQAT: oddiy item['id'] deb yozilsa, Deezer kutilmagan
+        # (masalan, hududiy cheklov tufayli qisman) javob qaytarganda
+        # xom KeyError chiqib, modul o'z va'dasiga (barcha xatolar
+        # DeezerError bo'lishi kerak) zid ravishda views.py dagi
+        # "except PROVIDER_ERRORS" ni chetlab o'tib, foydalanuvchiga
+        # tushunarsiz 500-xato ko'rsatardi.
+        if not item.get('id'):
+            raise DeezerError("Deezer noto'g'ri albom ma'lumotini qaytardi.")
         artist = item.get('artist') or {}
         return {
             'source': 'deezer',
