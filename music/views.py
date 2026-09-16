@@ -6,7 +6,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_not_required
 from django.contrib.auth.views import LoginView
 from django.utils.decorators import method_decorator
-from django.db.models import Count, F, OuterRef, Q, Subquery
+from django.db.models import Count, F, OuterRef, ProtectedError, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -527,8 +527,23 @@ class ArtistDeleteView(EgalikTalabi, DeleteView):
         return context
 
     def form_valid(self, form):
+        # Artist.albums FK on_delete=PROTECT: albomi bor ijrochini
+        # o'chirishga Django ruxsat bermaydi (ProtectedError chiqaradi).
+        # Yuqoridagi tasdiqlash matni "albomlari ham o'chadi" deb
+        # aldamchi va'da berganidan keyin, buni ushlamasak, foydalanuvchi
+        # tugmani bossa xom 500-xato ko'rardi.
+        try:
+            self.object.delete()
+        except ProtectedError:
+            messages.error(
+                self.request,
+                f"\"{self.object.name}\" ni o'chirib bo'lmadi — unda hali "
+                f"albomlar bor. Avval albomlarini o'chiring yoki boshqa "
+                f"ijrochiga o'tkazing."
+            )
+            return redirect(self.object.get_absolute_url())
         messages.success(self.request, f"\"{self.object.name}\" o'chirildi.")
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
 
 class SongUpdateView(EgalikTalabi, UpdateView):
@@ -709,8 +724,16 @@ def _google_foydalanuvchi(malumot):
     if not email:
         return None
 
+    # DIQQAT: faqat PAROLSIZ (avval Google orqali yaratilgan) akkauntga
+    # avtomatik bog'laymiz. Aks holda kimdir boshqa birovning pochtasi
+    # bilan oddiy ro'yxatdan o'tish orqali (tekshiruvsiz) akkaunt ochib
+    # qo'yishi, keyin haqiqiy egasi Google bilan kirganda O'SHA
+    # (begona odam biladigan parolli) akkauntga kiritilib qolishi mumkin
+    # edi — akkauntni "band qilib qo'yish" hujumi. Parollik akkaunt
+    # bo'lsa, uni Google bilan avtomatik bog'lamasdan, pastda YANGI
+    # (alohida) akkaunt yaratamiz.
     mavjud = User.objects.filter(email__iexact=email).order_by('id').first()
-    if mavjud:
+    if mavjud and not mavjud.has_usable_password():
         return mavjud
 
     # Foydalanuvchi nomi pochtaning @ gacha bo'lgan qismidan.

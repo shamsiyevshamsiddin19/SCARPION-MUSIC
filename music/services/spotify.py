@@ -136,14 +136,22 @@ class SpotifyClient:
             {
                 'external_id': t['id'],
                 'title': t['name'],
-                'track_number': t['track_number'],
+                # DIQQAT: Spotify'ning o'z 'track_number' i har DISKDA
+                # 1 dan boshlanadi (disk 2, trek 1 ham "1"). Ko'p diskli
+                # albomda shuni to'g'ridan-to'g'ri ishlatsak, ikkita
+                # qo'shiq "1" raqamiga ega bo'lib, bazadagi (albom, trek
+                # raqami) unikal cheklovi buzilib, import butunlay
+                # qulardi. Shuning uchun butun albom bo'ylab KETMA-KET
+                # (disklardan qat'i nazar) o'zimiz raqamlaymiz — tartib
+                # API'dan aynan shu ketma-ketlikda keladi.
+                'track_number': idx,
                 'duration_ms': t['duration_ms'],
                 # Spotify yangi ilovalarga preview bermaydi — doim None keladi.
                 'preview_url': t.get('preview_url'),
             }
             # Albomda 50 dan ortiq trek bo'lsa, qolgani keyingi sahifada
             # qoladi. Bu loyihada bunday holat deyarli uchramaydi.
-            for t in data['tracks']['items']
+            for idx, t in enumerate(data['tracks']['items'], start=1)
         ]
         return album
 

@@ -283,8 +283,17 @@ class Album(models.Model):
         verbose_name = 'Albom'
         verbose_name_plural = 'Albomlar'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Slug "ijrochi + slug" birgalikda unikal (Meta.constraints).
+        # Tahrirlashda ijrochi boshqasiga almashtirilsa, eski slug
+        # YANGI ijrochida band bo'lib qolishi mumkin — shuni bilish
+        # uchun asl ijrochini eslab qolamiz.
+        self._original_artist_id = self.artist_id
+
     def save(self, *args, **kwargs):
-        if not self.slug:
+        ijrochi_almashdimi = self.pk and self.artist_id != self._original_artist_id
+        if not self.slug or ijrochi_almashdimi:
             # DIQQAT: bu yerda faqat SHU IJROCHINING albomlari orasida
             # tekshiramiz, chunki qoidamiz "ijrochi + slug" birgalikda unikal.
             qs = Album.objects.filter(artist=self.artist)
@@ -292,6 +301,7 @@ class Album(models.Model):
                 qs = qs.exclude(pk=self.pk)
             self.slug = make_unique_slug(self.title, qs, 'albom')
         super().save(*args, **kwargs)
+        self._original_artist_id = self.artist_id
 
     # Manzil ikki qismdan iborat: /albom/<ijrochi-slug>/<albom-slug>/
     def get_absolute_url(self):
